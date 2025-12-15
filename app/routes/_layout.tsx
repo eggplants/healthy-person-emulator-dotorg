@@ -20,7 +20,8 @@ import {
 } from '~/stores/auth';
 import { getNavItems } from '~/utils/itemMenu';
 import type { LoaderFunctionArgs } from '@remix-run/node';
-import { authenticator } from '~/modules/auth.google.server';
+import { auth, isDemoMode } from '~/modules/auth.server';
+import { sessionStorage } from '~/modules/session.server';
 import { Modal } from '~/components/Modal';
 import GoogleLoginButton from '~/components/GoogleAuthButton';
 import {
@@ -30,8 +31,24 @@ import {
 import toast, { Toaster } from 'react-hot-toast';
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const userObject = await authenticator.isAuthenticated(request);
-  return { userObject };
+  const session = await auth.api.getSession({ headers: request.headers });
+  const userInfo: { id: string, email: string, image?: string } | null
+    = session?.user
+    ?? (await sessionStorage.getSession(
+      request.headers.get('Cookie'),
+    )).get('user')
+    ?? null;
+  
+  return {
+    userObject: userInfo
+      ? {
+        userUuid: userInfo.id,
+        email: userInfo.email,
+        userAuthType: 'Google' as const,
+        photoUrl: userInfo.image,
+      } : null,
+    isDemoMode: isDemoMode(),
+  };
 }
 
 function renderDesktopHeader() {
@@ -47,8 +64,8 @@ function renderDesktopHeader() {
   return (
     <>
       <div
-        className={`fixed top-0 left-0 h-screen bg-base-100 border-r border-base-200 overflow-y-auto flex flex-col transition-all duration-300 z-50
-          w-16 hover:w-64 2xl:w-64 group py-32`}
+        className={`fixed top-0 left-0 h-screen bg-base-100 border-r border-base-200 flex flex-col transition-all duration-300 z-50
+          w-16 hover:w-64 2xl:w-64 group`}
         onMouseEnter={() => setIsSidebarExpanded(true)}
         onMouseLeave={() => setIsSidebarExpanded(false)}
       >
@@ -90,7 +107,7 @@ function renderDesktopHeader() {
             </ul>
           </nav>
         </div>
-        <div className="h-[60px] px-4 flex flex-col justify-center">
+        <div className="h-[60px] px-4 flex flex-col justify-center flex-shrink-0">
           <ThemeSwitcher />
           <a href="/bookmark">
             <div className="avatar">
@@ -223,7 +240,8 @@ export default function Component() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [_, setAuthState] = useAtom(setAuthStateAtom);
-  const { userObject } = useLoaderData<typeof loader>();
+  const data = useLoaderData<typeof loader>();
+  const { userObject } = data;
   const isLoginModalOpen = useAtomValue(getIsLoginModalOpenAtom);
   const setIsLoginModalOpen = useSetAtom(setIsLoginModalOpenAtom);
 
@@ -383,7 +401,7 @@ export default function Component() {
         showCloseButton={false}
       >
         <div className="mx-4 my-4">
-          <GoogleLoginButton />
+          <GoogleLoginButton isDemoMode={data.isDemoMode} />
         </div>
       </Modal>
     </div>

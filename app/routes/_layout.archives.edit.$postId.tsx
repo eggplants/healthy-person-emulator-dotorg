@@ -40,7 +40,7 @@ import {
 } from '~/modules/security.server';
 import toast, { Toaster } from 'react-hot-toast';
 import { MakeToastMessage } from '~/utils/makeToastMessage';
-import { authenticator } from '~/modules/auth.google.server';
+import { auth } from '~/modules/auth.server';
 
 const postEditSchema = z.object({
   postTitle: z.string().min(1, 'タイトルが必要です'),
@@ -55,7 +55,8 @@ const postEditSchema = z.object({
 export type PostEditSchema = z.infer<typeof postEditSchema>;
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
-  const userObject = await authenticator.isAuthenticated(request);
+  const session = await auth.api.getSession({ headers: request.headers });
+  const userObject = session?.user ? { userUuid: session.user.id } : null;
   const userUuid = userObject?.userUuid;
   if (!userUuid) {
     throw redirect('/');

@@ -1,6 +1,6 @@
 import { useLoaderData } from '@remix-run/react';
 import { H1 } from '~/components/Headings';
-import { authenticator } from '~/modules/auth.google.server';
+import { auth } from '~/modules/auth.server';
 import {
   type MetaFunction,
   redirect,
@@ -24,7 +24,8 @@ type EditHistory = {
 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const isAuthenticated = await authenticator.isAuthenticated(request);
+  const session = await auth.api.getSession({ headers: request.headers });
+  const isAuthenticated = session?.user ? { userUuid: session.user.id } : null;
   if (!isAuthenticated) {
     return redirect('/?referrer=fromBookmark');
   }

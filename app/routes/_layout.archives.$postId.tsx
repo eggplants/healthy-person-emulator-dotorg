@@ -45,7 +45,7 @@ import { VoteButton } from '~/components/VoteButton';
 import { SNSLinks } from '~/components/SNSLinks';
 import { CommonNavLink } from '~/components/CommonNavLink';
 import { data } from '@remix-run/node';
-import { authenticator } from '~/modules/auth.google.server';
+import { auth } from '~/modules/auth.server';
 import { setIsLoginModalOpenAtom } from '~/stores/loginmodal';
 import { useSetAtom } from 'jotai';
 import { setVisitorCookieData } from '~/modules/visitor.server';
@@ -68,7 +68,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const data = await ArchiveDataEntry.getData(postId);
   const { likedPages, dislikedPages, likedComments, dislikedComments } =
     await getUserActivityData(request);
-  const isAuthenticated = await authenticator.isAuthenticated(request);
+  const session = await auth.api.getSession({ headers: request.headers });
+  const isAuthenticated = session?.user ? { userUuid: session.user.id } : null;
   const isBookmarked = await judgeIsBookmarked(
     postId,
     isAuthenticated?.userUuid,
@@ -551,7 +552,8 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 async function handleBookmarkPost(request: Request, postId: number) {
-  const isAuthenticated = await authenticator.isAuthenticated(request);
+  const session = await auth.api.getSession({ headers: request.headers });
+  const isAuthenticated = session?.user ? { userUuid: session.user.id } : null;
   if (!isAuthenticated) {
     return data(
       {

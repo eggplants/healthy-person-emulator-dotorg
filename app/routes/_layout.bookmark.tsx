@@ -5,7 +5,7 @@ import {
 } from '@remix-run/node';
 import { useLoaderData } from '@remix-run/react';
 import { CommonNavLink } from '~/components/CommonNavLink';
-import { authenticator } from '~/modules/auth.google.server';
+import { auth } from '~/modules/auth.server';
 import {
   getBookmarkPostsByPagenation,
   getUserId,
@@ -16,7 +16,8 @@ import { ThumbsUp, ThumbsDown, MessageSquareText } from 'lucide-react';
 import { H1 } from '~/components/Headings';
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const isAuthenticated = await authenticator.isAuthenticated(request);
+  const session = await auth.api.getSession({ headers: request.headers });
+  const isAuthenticated = session?.user ? { userUuid: session.user.id, email: session.user.email } : null;
   if (!isAuthenticated) {
     return redirect('/?referrer=fromBookmark');
   }
